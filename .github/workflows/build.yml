@@ -1,0 +1,11 @@
+name: Build Kali WSL RootFS
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - run: ./build-in-container.sh -D xfce -T default
+    - uses: actions/upload-artifact@v3
+      with:
+        path: output
