@@ -166,7 +166,7 @@ create_rootfs() {
       ${cmd_args} \
       --arch "${ARCH}" \
       --components=main,contrib,non-free,non-free-firmware \
-      --include=kali-archive-keyring \
+      --include=kali-archive-keyring,kali-linux-wsl,kali-linux-default,kali-desktop-xfce,xorg,xrdp \
       "${BRANCH}" \
       "${rootfsDir}"/ \
       "${MIRROR}" \
@@ -232,19 +232,12 @@ fi
 EOF
 
  #rootfs_chroot env DEBIAN_FRONTEND=noninteractive apt-get --quiet --yes install kali-defaults # Skipping: --no-install-recommends
-  rootfs_chroot env DEBIAN_FRONTEND=noninteractive apt-get --quiet --yes install kali-linux-wsl
 
-  [ "${TOOLSET}" != "none" ] && \
-    rootfs_chroot env DEBIAN_FRONTEND=noninteractive apt-get --quiet --yes install kali-linux-${TOOLSET}
-  [ "${DESKTOP}" != "none" ] && \
-    rootfs_chroot env DEBIAN_FRONTEND=noninteractive apt-get --quiet --yes install kali-desktop-${DESKTOP} xorg xrdp
   [ "${PACKAGES}" ] && \
     rootfs_chroot env DEBIAN_FRONTEND=noninteractive apt-get --quiet --yes install ${PACKAGES}
 
-  if [ "${DESKTOP}" != "none" ]; then
-    echo "[i] Switching xrdp to use 3390/TCP"
-    vrun sed -i 's/port=3389/port=3390/g' "${rootfsDir}"/etc/xrdp/xrdp.ini
-  fi
+  echo "[i] Switching xrdp to use 3390/TCP"
+  vrun sed -i 's/^port=3389$/port=3390/g' "${rootfsDir}"/etc/xrdp/xrdp.ini
 
   ## Using pipes with vrun doesn't work too well
   #echo "deb ${DEFAULT_MIRROR} ${BRANCH} main contrib non-free non-free-firmware" > "${rootfsDir}"/etc/apt/sources.list
@@ -264,6 +257,22 @@ ff02::1   ip6-allnodes
 ff02::2   ip6-allrouters
 EOF
   vrun truncate -s 0 "${rootfsDir}"/etc/resolv.conf
+
+  rootfs_chroot adduser --quiet --gecos '' kali << EOF
+kali
+kali
+EOF
+  rootfs_chroot usermod -aG adm,cdrom,sudo,dip,plugdev kali
+  cat << EOF > "${rootfsDir}"/etc/wsl.conf
+[network]
+hostname=kali
+
+[user]
+default=kali
+
+[boot]
+systemd=true
+EOF
 
   ## Clean - APT packages
   rootfs_chroot env DEBIAN_FRONTEND=noninteractive apt-get --quiet --yes clean
